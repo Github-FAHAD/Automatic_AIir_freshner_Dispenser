@@ -1,0 +1,106 @@
+write a code for esp32 such that when gas sensor mq135 senses ammonia, servo motor should rotate also display the the ammonia 
+detection in other device using thingspeak. give pin connection description.
+
+Here's an example code that you can use to detect ammonia using the MQ135 gas sensor and control a servo motor on an ESP32. 
+The code also sends the ammonia detection data to a ThingSpeak channel for visualization.
+
+First, you need to connect the MQ135 gas sensor and the servo motor to the ESP32. Here's a suggested pin connection description:
+
+    MQ135 sensor
+        VCC to 3.3V
+        GND to GND
+        DO to GPIO32 (you can change this in the code)
+    Servo motor
+        Signal to GPIO2 (you can change this in the code)
+        VCC to 5V
+        GND to GND
+
+Make sure you have the necessary libraries installed: Adafruit_MQTT, Adafruit_MQTT_Client, Adafruit_Sensor, and Adafruit_BME280.
+
+arduino
+
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <Adafruit_Sensor.h>
+#include <Adafruit_BME280.h>
+#include <Wire.h>
+#include <Adafruit_MQTT.h>
+#include <Adafruit_MQTT_Client.h>
+#include <Servo.h>
+
+#define WIFI_SSID "your_wifi_ssid"
+#define WIFI_PASS "your_wifi_password"
+
+// ThingSpeak channel info
+#define TS_CHANNEL_ID "your_channel_id"
+#define TS_API_KEY "your_api_key"
+
+// MQTT info
+#define MQTT_SERVER "mqtt.thingspeak.com"
+#define MQTT_PORT 8883
+#define MQTT_USER "mqtt_user"
+#define MQTT_PASS "mqtt_password"
+
+// MQ135 gas sensor
+#define MQ135_PIN 32
+
+// Servo motor
+#define SERVO_PIN 2
+Servo servo;
+
+// ThingSpeak MQTT client and channel objects
+WiFiClientSecure client;
+Adafruit_MQTT_Client mqtt(&client, MQTT_SERVER, MQTT_PORT, MQTT_USER, MQTT_PASS);
+Adafruit_MQTT_Publish ts_publish(&mqtt, TS_CHANNEL_ID "/publish/" TS_API_KEY);
+
+void setup() {
+  Serial.begin(115200);
+
+  // Connect to WiFi
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+
+  // Initialize the servo motor
+  servo.attach(SERVO_PIN);
+
+  // Initialize the MQ135 sensor
+  pinMode(MQ135_PIN, INPUT);
+
+  // Connect to ThingSpeak MQTT broker
+  client.setCACert(thingspeak_ca);
+  if (!mqtt.connected()) {
+    Serial.println("Connecting to ThingSpeak MQTT broker...");
+    while (!mqtt.connect()) {
+      Serial.println("Failed to connect to ThingSpeak MQTT broker. Retrying in 5 seconds...");
+      delay(5000);
+    }
+  }
+
+  Serial.println("Setup complete.");
+}
+
+void loop() {
+  // Read the MQ135 sensor value
+  int ammonia_level = analogRead(MQ135_PIN);
+
+  // Check if ammonia is detected
+  if (ammonia_level > 200) {
+    // Rotate the servo motor to a specific angle
+    servo.write(90);
+
+    // Publish the ammonia detection data to ThingSpeak
+    ts_publish.publish(ammonia_level);
+
+    Serial.println("Ammonia detected!");
+  }
+
+  // Wait for 1 second before taking the next reading
+  delay(1000);
+}
+
+In the code above, we first define some constants for the WiFi credentials, ThingSpeak channel info, MQTT info, and pin connections. 
+In the setup() function, we connect to WiFi, initialize the servo motor and MQ135 sensor, and connect to the ThingSpeak MQTT broker. 
+In the loop() function, we read the MQ135 sensor value and check if ammonia is
